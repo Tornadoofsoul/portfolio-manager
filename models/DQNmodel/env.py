@@ -1,7 +1,9 @@
 import numpy as np
-import base
 from rl.core import Env
 from sklearn import preprocessing
+
+from models import base
+
 
 class env(Env):
     def __init__(self, train_window, test_window):
@@ -112,9 +114,3 @@ class env(Env):
                 return True
         else:
             return False
-
-
-
-
-
-
