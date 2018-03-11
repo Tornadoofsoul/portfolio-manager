@@ -1,84 +1,39 @@
 #encoding:utf-8
-import os
-import sys
 import pandas as pd
-from datetime import timedelta
 from models.config import config
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
-curPath = os.path.abspath(os.path.dirname(__file__))
-rootPath = os.path.split(curPath)[0]
-sys.path.append(curPath)
-sys.path.append(rootPath)
+def make_diff(data_path):
+    df = pd.read_csv(data_path, dtype={'CODE': 'str'})
+    df['diff1'] = df.groupby(['CODE'])['CLOSE'].diff()
+    df['diff2'] = df.groupby(['CODE'])['diff1'].diff()
+    df.to_csv(data_path, index=False)
 
-class Base():
-    __instance = None
+def plot_nav_curve(strategy_net_value, market_net_value, dates):
+    plt.plot(dates, strategy_net_value, 'r-', label=strategy_net_value, linewidth=1.5)
+    plt.plot(dates, market_net_value, 'g-', label=market_net_value, linewidth=1.5)
 
-    def __new__(cls, *args, **kwargs):
-        if cls.__instance is None:
-            cls.__instance = object.__new__(cls, *args, **kwargs)
-        return cls.__instance
+    plt.xlabel('Time')
+    plt.ylabel('Net Asset Value')
+    plt.legend(['strategy', 'market'], loc='upper left')
+    plt.title("NAV")
+    plt.grid(True)
+    plt.xticks(fontsize=8, rotation=20)
+    plt.ioff()
+    plt.savefig(config.result)
+    plt.close()
 
-    # 大v的操作记录
-    def load_records_csv(self):
-        print('load records data....')
-        df = pd.read_csv(config.RECORDS_PATH, parse_dates=['Updated'])
-        df["Updated"] = df["Updated"].apply(lambda x: pd.to_datetime(x))
-        return df
+def gen_experience_display_pool(df):
+    pool = []
+    def apply(data):
+        for i in range(data.shape[0] - 1):
+            pool.append(data.iloc[i:i+2])
 
-    # 股票行情
-    def load_quote_csv(self):
-        print('load quote data....')
-        df = pd.read_csv(config.QUTOE_PATH, parse_dates=['TradingDay'])
-        return df
-
-    # 大V的表现
-    def load_nav_csv(self):
-        print('load nav data....')
-        df = pd.read_csv(config.NAV_PATH, parse_dates=['NavDate'])
-        df["NavDate"] = df["NavDate"].apply(lambda x: pd.to_datetime(x))
-        return df
-
-    # 行业信息
-    def load_industry_csv(self):
-        print('load industry data....')
-        df = pd.read_csv(config.INDUTRY_PATH)
-        return df
-
-    # 行业行情
-    def load_industry_quote_xlsx(self):
-        print('load industry quote data...')
-        df = pd.read_excel(config.INDUSTRY_QUOTE_PATH)
-        df.columns = df.iloc[0, :].apply(lambda x: x[:-4]).values
-        df = df.iloc[2:]
-        df.index.names = ['TradingDay']
-        df.reset_index(inplace=True)
-        return df
-
-    # 交易日
-    def load_trading_day_csv(self):
-        print('load trading day data....')
-        return pd.read_csv(config.TRADING_DAY,  parse_dates=['TradingDate'])
-
-    def load_800_data(self):
-        print('load 800 data....')
-        return pd.read_csv(config.ZZ800_DATA, parse_dates=['DATE'])
-
-    def make_diff(self):
-        # df = self.load_quote_csv()
-        # df['diff1'] = df.groupby(['SecuCode'])['Close'].diff()
-        # df['diff2'] = df.groupby(['SecuCode'])['diff1'].diff()
-        # df.to_csv(config.QUTOE_PATH, index=False)
-
-        df = self.load_800_data()
-        df['diff1'] = df.groupby(['CODE'])['CLOSE'].diff()
-        df['diff2'] = df.groupby(['CODE'])['diff1'].diff()
-        df.to_csv(config.ZZ800_DATA, index=False)
-
-    def get_last_month(self, date, days):
-        date_ = str((pd.to_datetime(date) - timedelta(days=days)).date())
-        return date_
-base = Base()
+    df.groupby('CODE').apply(func=apply)
+    return pool
 
 if __name__ == '__main__':
-    base.make_diff()
+    make_diff(config.ZZ800_DATA)
     print('')

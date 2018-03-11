@@ -1,10 +1,11 @@
 import pandas as pd
 import numpy as np
+from models.config import config
 
 #learning_rate=0.1, gamma=0, e_greedy=1时候，最多迭代action次
 
 class QLearningModel:
-    def __init__(self, action_space, learning_rate=0.1, gamma=0.9, e_greedy=0.9):
+    def __init__(self, action_space=[0, 1], learning_rate=0.1, gamma=0.9, e_greedy=0.9):
         self.action_space = action_space
         self.lr = learning_rate
         self.gamma = gamma
@@ -15,15 +16,14 @@ class QLearningModel:
     def choose_action(self, state):
 
         self.check_state_exist(state)
+        state_action = self.q_table.loc[state]
 
         if np.random.uniform() < self.epsilon:
-            state_action = self.q_table.ix[state, :]
-            state_action = state_action.reindex(np.random.permutation(state_action.index))
             action = state_action.argmax()
         else:
             action = np.random.choice(self.action_space)
-
-        return action
+        value = state_action.loc[action]
+        return action, value
 
     def q_learn(self, s, a, r, s_):
         self.check_state_exist(s_)
@@ -61,3 +61,8 @@ class QLearningModel:
             self.q_table_frequent = self.q_table_frequent.append(
                 pd.Series([0] * len(self.action_space), index=self.q_table_frequent.columns, name=state, ))
 
+    def save_model(self, path):
+        self.q_table.to_csv(config.rootPath + path)
+
+    def load_model(self, path):
+        self.q_table = pd.read_csv(config.rootPath + path, index_col=0)
